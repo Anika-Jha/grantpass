@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model GrantCycle {
+  id           String                  @id
+  name         String
+  description  String
+  maxSlots     Int
+  active       Boolean                 @default(true)
+  createdAt    DateTime                @default(now())
+
+  challenges   ApplicationChallenge[]
+  applications Application[]
+}
+
+model ApplicationChallenge {
+  id         String     @id
+  cycleId    String
+  signal     String
+  expiresAt  DateTime
+  consumed   Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+
+  cycle GrantCycle @relation(fields: [cycleId], references: [id])
+
+  @@index([cycleId])
+}
+
+model Application {
+  id           String   @id
+  cycleId      String
+  challengeId  String
+  nullifier    String
+  signal       String
+  eligible     Boolean
+  status       String   @default("PENDING_REVIEW")
+  createdAt    DateTime @default(now())
+
+  cycle GrantCycle @relation(fields: [cycleId], references: [id])
+
+  @@unique([cycleId, nullifier])
+  @@unique([challengeId])
+  @@index([cycleId])
+  @@index([status])
+}

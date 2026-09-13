@@ -39,3 +39,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# Local database
+*.db
+*.db-journal
+
+/prisma/*.db
+/prisma/*.db-journal
+
+
+# Local AI/editor tooling
+.agents/
+.claude/
+.cursor/
+.devin/
+
+# Generated Prisma client
+src/generated/
