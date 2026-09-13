@@ -105,6 +105,15 @@ export async function POST(request: Request) {
         serializedProof
       );
 
+      if (verified.nullifierSeed !== String(nullifierSeed)) {
+        return NextResponse.json(
+          {
+            error: "Proof was generated with an invalid verification seed.",
+          },
+          { status: 400 }
+        );
+      }
+
     /*
      * CRITERION 5
      *

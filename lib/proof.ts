@@ -1,88 +1,100 @@
-import {
-    AnonAadhaarCorePackage,
-  } from "@anon-aadhaar/core";
-  
-  export interface VerifiedProof {
-    valid: boolean;
-    nullifier: string;
-    signal: string;
-    outputs: Record<string, unknown>;
+import { AnonAadhaarCorePackage } from "@anon-aadhaar/core";
+
+export interface VerifiedProof {
+  valid: true;
+  nullifier: string;
+  nullifierSeed: string;
+  signal: string;
+  outputs: {
+    ageAbove18: boolean;
+    gender: string;
+    pincode: string;
+    state: string;
+    timestamp: string;
+    pubkeyHash: string;
+  };
+}
+
+export async function verifyAnonAadhaarProof(
+  serializedProof: string
+): Promise<VerifiedProof> {
+  if (!serializedProof || typeof serializedProof !== "string") {
+    throw new Error("Missing serialized proof.");
   }
-  
-  /**
-   * The serialized proof is the ONLY Aadhaar-derived value accepted
-   * by the application server.
-   *
-   * Raw QR data is deliberately not accepted here.
-   */
-  export async function verifyAnonAadhaarProof(
-    serializedProof: string
-  ): Promise<VerifiedProof> {
-    if (!serializedProof || typeof serializedProof !== "string") {
-      throw new Error("Missing serialized proof.");
-    }
-  
-    let proof;
-  
-    try {
-      proof =
-        await AnonAadhaarCorePackage.deserialize(
-          serializedProof
-        );
-    } catch {
-      throw new Error("Invalid proof encoding.");
-    }
-  
-    const valid =
-      await AnonAadhaarCorePackage.verify(proof);
-  
-    if (!valid) {
-      throw new Error("Zero-knowledge proof verification failed.");
-    }
-  
-    /*
-     * Anon Aadhaar proof objects contain the cryptographic claim.
-     * We intentionally do not accept a client-supplied `valid` flag.
-     *
-     * The exact claim structure is normalized here so the rest of
-     * the application never deals with raw PCD internals.
-     */
-  
-    const claim = (proof as any).claim ?? proof;
-  
-    const nullifier =
-      String(
-        claim.nullifier ??
-        claim.identityNullifier ??
-        claim.publicSignals?.nullifier ??
-        ""
-      );
-  
-    const signal =
-      String(
-        claim.signal ??
-        claim.publicSignals?.signal ??
-        ""
-      );
-  
-    const outputs =
-      (claim.revealedFields ??
-        claim.fields ??
-        claim.publicSignals ??
-        {}) as Record<string, unknown>;
-  
-    if (!nullifier) {
-      throw new Error("Proof did not contain a nullifier.");
-    }
-  
-    if (!signal) {
-      throw new Error("Proof did not contain an application signal.");
-    }
-  
-    return {
-      valid: true,
-      nullifier,
-      signal,
-      outputs,
-    };
+
+  let proof: any;
+
+  try {
+    proof = await AnonAadhaarCorePackage.deserialize(serializedProof);
+  } catch {
+    throw new Error("Invalid proof encoding.");
   }
+
+  const valid = await AnonAadhaarCorePackage.verify(proof);
+
+  if (!valid) {
+    throw new Error("Zero-knowledge proof verification failed.");
+  }
+
+  const claim = proof.claim;
+
+  if (!claim) {
+    throw new Error("Verified proof contains no claim.");
+  }
+
+  const publicSignals = claim.publicSignals;
+
+  if (!Array.isArray(publicSignals) || publicSignals.length < 7) {
+    throw new Error("Verified proof has an invalid public signal set.");
+  }
+
+  const nullifier = String(publicSignals[1]);
+  const timestamp = String(publicSignals[2]);
+
+  const ageAbove18 =
+    publicSignals[3] === true ||
+    publicSignals[3] === 1 ||
+    publicSignals[3] === "1" ||
+    publicSignals[3] === "true";
+
+  const gender = String(publicSignals[4]);
+  const pincode = String(publicSignals[5]);
+  const state = String(publicSignals[6]);
+  const pubkeyHash = String(publicSignals[0]);
+
+  const nullifierSeed = String(proof.proof?.nullifierSeed ?? "");
+
+  if (!nullifier) {
+    throw new Error("Proof did not contain a nullifier.");
+  }
+
+  if (!nullifierSeed) {
+    throw new Error("Proof did not contain a nullifier seed.");
+  }
+
+  const signal = String(
+    claim.signal ??
+      proof.proof?.signal ??
+      claim.publicSignals?.[7] ??
+      ""
+  );
+
+  if (!signal) {
+    throw new Error("Proof did not contain an application signal.");
+  }
+
+  return {
+    valid: true,
+    nullifier,
+    nullifierSeed,
+    signal,
+    outputs: {
+      ageAbove18,
+      gender,
+      pincode,
+      state,
+      timestamp,
+      pubkeyHash,
+    },
+  };
+}
