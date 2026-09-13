@@ -238,91 +238,9 @@ eligibility decision
 ```
 
 ---
-
-# Applicant flow
-
-## 1. Start
-
-The applicant opens:
-
-```text
-/apply
-```
-
-The server creates an application challenge.
-
-No Aadhaar information is collected at this stage.
-
-## 2. Generate proof
-
-The applicant uses the Anon Aadhaar proving flow.
-
-The proof generation happens in the applicant flow.
-
-The application does not ask the applicant to manually type their Aadhaar number.
-
-## 3. Submit proof
-
-The browser submits:
-
-```json
-{
-  "challengeId": "...",
-  "proof": "..."
-}
-```
-
-The server does not accept raw Aadhaar QR data.
-
-## 4. Server verification
-
-The server:
-
-1. Loads the challenge.
-2. Loads the application-controlled nullifier seed.
-3. Deserializes the proof.
-4. Cryptographically verifies the proof.
-5. Checks the application signal.
-6. Evaluates eligibility.
-7. Looks up the nullifier.
-8. Checks available grant slots.
-9. Records the application.
-
-## 5. Confirmation
-
-The applicant receives an application reference.
-
-No Aadhaar number is displayed to the volunteer.
+## Proof generation is performed locally in the applicant's browser using Anon Aadhaar. Depending on device performance, local ZK proof generation may take several seconds to over a minute.
 
 ---
-
-# Volunteer flow
-
-Volunteers open:
-
-```text
-/dashboard
-```
-
-The dashboard provides privacy-preserving operational information such as:
-
-* verified applications
-* applications pending review
-* remaining grant slots
-* duplicate prevention statistics
-
-The dashboard intentionally does not expose:
-
-* Aadhaar numbers
-* names
-* addresses
-* photographs
-* phone numbers
-
-The goal is to give Kavita enough operational information without turning the grant database into an identity database.
-
----
-
 # Project structure
 
 ```text
@@ -566,23 +484,6 @@ GET /api/dashboard
 ```
 
 Returns privacy-preserving operational statistics.
-
----
-
-# Mapping to the challenge
-
-GrantPass is intentionally designed around the eight evaluation criteria.
-
-| Criterion                           | Implementation                                                     |
-| ----------------------------------- | ------------------------------------------------------------------ |
-| One claim per human                 | Persistent `nullifier` + database uniqueness constraint            |
-| Nullifier seed fixed by application | `NULLIFIER_SEED` is server-side and never accepted from the client |
-| Proof verified server-side          | `/api/application` deserializes and verifies the proof             |
-| Eligibility from proof              | `evaluateEligibility()` consumes verified proof outputs            |
-| Signal bound to application         | Server-generated challenge signal must equal proof signal          |
-| Raw Aadhaar stays on device         | API accepts serialized proof, not QR data                          |
-| Proof generation in applicant flow  | `LaunchProveModal` is used inside `/apply`                         |
-| No credentials in repository        | `.env` ignored and `.env.example` contains placeholders only       |
 
 ---
 
